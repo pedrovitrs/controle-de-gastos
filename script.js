@@ -1,41 +1,60 @@
+// ==============================
+// CONTROLE FINANCEIRO - SCRIPT
+// ==============================
+
+// Elementos
 const form = document.getElementById("form-gasto");
 const lista = document.getElementById("lista-gastos");
-const saldoSpan = document.getElementById("saldo");
-const ctx = document.getElementById("grafico");
+const saldoEl = document.getElementById("saldo");
+const entradasEl = document.getElementById("total-entradas");
+const saidasEl = document.getElementById("total-saidas");
+const graficoCanvas = document.getElementById("grafico");
 
-let gastos = JSON.parse(localStorage.getItem("gastos")) || [];
+// Estado
+let movimentacoes = JSON.parse(localStorage.getItem("movimentacoes")) || [];
 let grafico = null;
 
-// salvar no localStorage
-function salvarDados() {
-    localStorage.setItem("gastos", JSON.stringify(gastos));
+// ==============================
+// FUNÇÕES DE UTILIDADE
+// ==============================
+function salvar() {
+    localStorage.setItem("movimentacoes", JSON.stringify(movimentacoes));
 }
 
-// calcular saldo
-function calcularSaldo() {
-    let saldo = 0;
-    gastos.forEach(g => {
-        saldo += g.tipo === "entrada" ? g.valor : -g.valor;
+function formatarMoeda(valor) {
+    return valor.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
     });
-    saldoSpan.textContent = saldo.toFixed(2);
 }
 
-// atualizar gráfico
-function atualizarGrafico() {
+// ==============================
+// CÁLCULOS
+// ==============================
+function calcularResumo() {
     let entradas = 0;
     let saidas = 0;
 
-    gastos.forEach(g => {
-        if (g.tipo === "entrada") entradas += g.valor;
-        else saidas += g.valor;
+    movimentacoes.forEach(m => {
+        if (m.tipo === "entrada") entradas += m.valor;
+        else saidas += m.valor;
     });
 
-    if (grafico) {
-        grafico.destroy();
-    }
+    saldoEl.textContent = formatarMoeda(entradas - saidas);
+    entradasEl.textContent = formatarMoeda(entradas);
+    saidasEl.textContent = formatarMoeda(saidas);
 
-    grafico = new Chart(ctx, {
-        type: "pie",
+    atualizarGrafico(entradas, saidas);
+}
+
+// ==============================
+// GRÁFICO
+// ==============================
+function atualizarGrafico(entradas, saidas) {
+    if (grafico) grafico.destroy();
+
+    grafico = new Chart(graficoCanvas, {
+        type: "doughnut",
         data: {
             labels: ["Entradas", "Saídas"],
             datasets: [{
@@ -46,45 +65,50 @@ function atualizarGrafico() {
     });
 }
 
-// renderizar lista
-function renderizar() {
+// ==============================
+// RENDERIZAÇÃO
+// ==============================
+function renderizarLista() {
     lista.innerHTML = "";
 
-    gastos.forEach((gasto, index) => {
+    movimentacoes.forEach((m, index) => {
         const li = document.createElement("li");
-        li.className = gasto.tipo;
+        li.className = m.tipo;
         li.innerHTML = `
-            ${gasto.descricao} - R$ ${gasto.valor.toFixed(2)}
-            <button onclick="remover(${index})">❌</button>
+            <span>${m.descricao}</span>
+            <span>${formatarMoeda(m.valor)}</span>
+            <button onclick="remover(${index})">🗑️</button>
         `;
         lista.appendChild(li);
     });
 
-    calcularSaldo();
-    atualizarGrafico();
+    calcularResumo();
 }
 
-// remover gasto
-function remover(index) {
-    gastos.splice(index, 1);
-    salvarDados();
-    renderizar();
-}
-
-// adicionar gasto
-form.addEventListener("submit", function (e) {
+// ==============================
+// EVENTOS
+// ==============================
+form.addEventListener("submit", e => {
     e.preventDefault();
 
-    const descricao = document.getElementById("descricao").value;
-    const valor = parseFloat(document.getElementById("valor").value);
+    const descricao = document.getElementById("descricao").value.trim();
+    const valor = Number(document.getElementById("valor").value);
     const tipo = document.getElementById("tipo").value;
 
-    gastos.push({ descricao, valor, tipo });
+    movimentacoes.push({ descricao, valor, tipo });
 
-    salvarDados();
-    renderizar();
+    salvar();
+    renderizarLista();
     form.reset();
 });
 
-// inicializar
-renderizar();
+function remover(index) {
+    movimentacoes.splice(index, 1);
+    salvar();
+    renderizarLista();
+}
+
+// ==============================
+// INICIALIZAÇÃO
+// ==============================
+renderizarLista();
