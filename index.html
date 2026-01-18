@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle Financeiro - Com Backup</title>
+    <title>Controle Financeiro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
@@ -100,15 +100,16 @@
 
         button:hover { background-color: #2563eb; }
         
-        /* Estilos específicos para botões de backup */
+        /* Área de Backup */
         .backup-area {
             display: flex;
             gap: 10px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
         
-        .btn-export { background-color: #2c3e50; }
-        .btn-import { background-color: #e67e22; }
+        .btn-export { background-color: #2c3e50; flex: 1; }
+        .btn-import { background-color: #e67e22; flex: 1; }
 
         /* Lista */
         .list { list-style-type: none; }
@@ -191,8 +192,8 @@
                     <label>Descrição</label>
                     <input type="text" id="text" placeholder="Ex: Salário" required />
 
-                    <label>Valor</label>
-                    <input type="number" id="amount" placeholder="Ex: 150.00" required step="0.01" />
+                    <label>Valor (Use ponto para centavos)</label>
+                    <input type="number" id="amount" placeholder="Ex: 150.50" required step="0.01" />
 
                     <label>Tipo</label>
                     <select id="type">
@@ -206,12 +207,9 @@
         </div>
 
         <div class="card">
-            <h3>Backup de Dados (Segurança)</h3>
-            <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
-                Salve seus dados no computador ou carregue um arquivo salvo anteriormente.
-            </p>
+            <h3>Backup de Dados</h3>
             <div class="backup-area">
-                <button class="btn-export" onclick="exportData()">💾 Baixar Dados (Backup)</button>
+                <button class="btn-export" onclick="exportData()">💾 Baixar Backup</button>
                 <button class="btn-import" onclick="document.getElementById('importFile').click()">📂 Restaurar Backup</button>
                 <input type="file" id="importFile" style="display: none" onchange="importData(this)" accept=".json">
             </div>
@@ -222,10 +220,10 @@
     </div>
 
     <script>
-        // --- Elementos ---
+        // --- CORREÇÃO AQUI: IDs corrigidos para usar hífen (-) ao invés de underline (_) ---
         const balance = document.getElementById('balance');
-        const money_plus = document.getElementById('money plus');
-        const money_minus = document.getElementById('money minus');
+        const money_plus = document.getElementById('money-plus');   // Corrigido
+        const money_minus = document.getElementById('money-minus'); // Corrigido
         const list = document.getElementById('list');
         const form = document.getElementById('form');
         const text = document.getElementById('text');
@@ -236,7 +234,6 @@
         let myChart;
 
         // --- Estado Inicial ---
-        // Pega do LocalStorage ao abrir a página
         const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
         let transactions = localStorage.getItem('transactions') !== null ? localStorageTransactions : [];
 
@@ -250,9 +247,14 @@
                 return;
             }
 
-            let amountValue = +amount.value;
-            if(typeSelector.value === 'exp') amountValue = Math.abs(amountValue) * -1;
-            else amountValue = Math.abs(amountValue);
+            let amountValue = parseFloat(amount.value); // Usa o valor direto do input number
+
+            // Se for despesa, converte para negativo
+            if(typeSelector.value === 'exp') {
+                amountValue = Math.abs(amountValue) * -1;
+            } else {
+                amountValue = Math.abs(amountValue);
+            }
 
             const transaction = {
                 id: generateID(),
@@ -293,6 +295,8 @@
             const expense = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
 
             balance.innerText = `R$ ${total}`;
+            
+            // Aqui estava o erro, agora com as variáveis corrigidas vai funcionar:
             money_plus.innerText = `+R$ ${income}`;
             money_minus.innerText = `-R$ ${expense}`;
 
@@ -313,12 +317,11 @@
         function updateChart(income, expense) {
             if (myChart) myChart.destroy();
 
-            // Se tudo for zero, mostra gráfico vazio cinza
             let dataValues = [expense, income];
             let bgColors = ['#e74c3c', '#2ecc71'];
             
+            // Se tudo for zero, mostra um placeholder cinza
             if (income == 0 && expense == 0) {
-                // Opcional: mostrar círculo cinza se zerado
                 dataValues = [1]; 
                 bgColors = ['#e0e0e0'];
             }
@@ -330,7 +333,7 @@
                     datasets: [{
                         data: dataValues,
                         backgroundColor: bgColors,
-                        borderWidth: 0
+                        borderWidth: 1
                     }]
                 },
                 options: {
@@ -343,9 +346,7 @@
             });
         }
 
-        // --- Funções de BACKUP (Importar/Exportar) ---
-
-        // 1. Exportar para arquivo JSON
+        // --- Funções de BACKUP ---
         function exportData() {
             if (transactions.length === 0) {
                 alert("Não há dados para exportar!");
@@ -363,7 +364,6 @@
             document.body.removeChild(a);
         }
 
-        // 2. Importar de arquivo JSON
         function importData(input) {
             const file = input.files[0];
             if (!file) return;
@@ -373,22 +373,18 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     if (Array.isArray(data)) {
-                        // Mesclar ou substituir? Aqui optamos por substituir para restaurar backup exato
-                        if(confirm("Isso irá substituir seus dados atuais pelos do arquivo. Deseja continuar?")) {
+                        if(confirm("Substituir dados atuais pelo backup?")) {
                             transactions = data;
                             updateLocalStorage();
                             init();
-                            alert("Dados restaurados com sucesso!");
+                            alert("Sucesso!");
                         }
-                    } else {
-                        alert("Arquivo inválido.");
                     }
                 } catch (error) {
-                    alert("Erro ao ler o arquivo. Verifique se é um backup válido.");
+                    alert("Erro ao ler backup.");
                 }
             };
             reader.readAsText(file);
-            // Limpar input para permitir re-upload do mesmo arquivo se necessário
             input.value = '';
         }
 
