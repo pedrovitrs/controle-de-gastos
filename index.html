@@ -2,85 +2,405 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Controle Financeiro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Estilo -->
-    <link rel="stylesheet" href="style.css">
-
-    <!-- Chart.js -->
+    <title>Controle Financeiro - Com Backup</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h2 { margin-bottom: 10px; }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Paineis de Saldo */
+        .inc-exp-container {
+            background-color: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .inc-exp-container > div { flex: 1; }
+        .inc-exp-container > div:first-of-type { border-right: 1px solid #dedede; }
+
+        .money { font-size: 1.5rem; letter-spacing: 1px; margin: 5px 0; font-weight: bold; }
+        .money.plus { color: var(--success); }
+        .money.minus { color: var(--danger); }
+
+        /* Grid Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 700px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Cartões e Inputs */
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #dedede;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover { background-color: #2563eb; }
+        
+        /* Estilos específicos para botões de backup */
+        .backup-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn-export { background-color: #2c3e50; }
+        .btn-import { background-color: #e67e22; }
+
+        /* Lista */
+        .list { list-style-type: none; }
+
+        .list li {
+            background-color: var(--card-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        .list li.plus { border-right: 5px solid var(--success); }
+        .list li.minus { border-right: 5px solid var(--danger); }
+
+        .delete-btn {
+            cursor: pointer;
+            background-color: var(--danger);
+            color: #fff;
+            border: 0;
+            padding: 2px 8px;
+            font-size: 12px;
+            line-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translate(-100%, -50%);
+            width: auto;
+        }
+
+        .list li:hover .delete-btn { opacity: 1; transform: translate(0, -50%); }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
 </head>
 <body>
 
-<header>
-    <h1>💰 Controle Financeiro Pessoal</h1>
-    <p>Gerencie suas entradas e saídas de forma simples</p>
-</header>
+    <div class="container">
+        <h2 style="text-align: center;">Minhas Finanças</h2>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <p style="text-transform: uppercase; color: #777; font-size: 0.9rem;">Saldo Atual</p>
+            <h1 id="balance">R$ 0,00</h1>
+        </div>
 
-<main class="container">
+        <div class="inc-exp-container">
+            <div>
+                <h4>Receitas</h4>
+                <p id="money-plus" class="money plus">+R$ 0,00</p>
+            </div>
+            <div>
+                <h4>Despesas</h4>
+                <p id="money-minus" class="money minus">-R$ 0,00</p>
+            </div>
+        </div>
 
-    <!-- FORMULÁRIO -->
-    <section class="card">
-        <h2>Adicionar movimentação</h2>
-
-        <form id="form-gasto">
-            <div class="form-group">
-                <label for="descricao">Descrição</label>
-                <input type="text" id="descricao" required>
+        <div class="main-grid">
+            <div class="card">
+                <h3>Visão Geral</h3>
+                <div class="chart-container">
+                    <canvas id="financeChart"></canvas>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="valor">Valor (R$)</label>
-                <input type="number" id="valor" step="0.01" required>
+            <div class="card">
+                <h3>Nova Transação</h3>
+                <form id="form">
+                    <label>Descrição</label>
+                    <input type="text" id="text" placeholder="Ex: Salário" required />
+
+                    <label>Valor</label>
+                    <input type="number" id="amount" placeholder="Ex: 150.00" required step="0.01" />
+
+                    <label>Tipo</label>
+                    <select id="type">
+                        <option value="inc">Receita (+)</option>
+                        <option value="exp">Despesa (-)</option>
+                    </select>
+
+                    <button class="btn">Adicionar Transação</button>
+                </form>
             </div>
+        </div>
 
-            <div class="form-group">
-                <label for="tipo">Tipo</label>
-                <select id="tipo">
-                    <option value="entrada">Entrada</option>
-                    <option value="saida">Saída</option>
-                </select>
+        <div class="card">
+            <h3>Backup de Dados (Segurança)</h3>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
+                Salve seus dados no computador ou carregue um arquivo salvo anteriormente.
+            </p>
+            <div class="backup-area">
+                <button class="btn-export" onclick="exportData()">💾 Baixar Dados (Backup)</button>
+                <button class="btn-import" onclick="document.getElementById('importFile').click()">📂 Restaurar Backup</button>
+                <input type="file" id="importFile" style="display: none" onchange="importData(this)" accept=".json">
             </div>
-
-            <button type="submit">Adicionar</button>
-        </form>
-    </section>
-
-    <!-- RESUMO -->
-    <section class="card resumo">
-        <div>
-            <h3>Saldo</h3>
-            <p id="saldo">R$ 0,00</p>
         </div>
-        <div>
-            <h3>Entradas</h3>
-            <p id="total-entradas">R$ 0,00</p>
-        </div>
-        <div>
-            <h3>Saídas</h3>
-            <p id="total-saidas">R$ 0,00</p>
-        </div>
-    </section>
 
-    <!-- LISTA -->
-    <section class="card">
-        <h2>Histórico</h2>
-        <ul id="lista-gastos"></ul>
-    </section>
+        <h3>Histórico</h3>
+        <ul id="list" class="list"></ul>
+    </div>
 
-    <!-- GRÁFICO -->
-    <section class="card">
-        <h2>📊 Distribuição Financeira</h2>
-        <canvas id="grafico"></canvas>
-    </section>
+    <script>
+        // --- Elementos ---
+        const balance = document.getElementById('balance');
+        const money_plus = document.getElementById('money_plus');
+        const money_minus = document.getElementById('money_minus');
+        const list = document.getElementById('list');
+        const form = document.getElementById('form');
+        const text = document.getElementById('text');
+        const amount = document.getElementById('amount');
+        const typeSelector = document.getElementById('type');
+        const ctx = document.getElementById('financeChart').getContext('2d');
 
-</main>
+        let myChart;
 
-<footer>
-    <p>© 2026 - Controle Financeiro</p>
-</footer>
+        // --- Estado Inicial ---
+        // Pega do LocalStorage ao abrir a página
+        const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
+        let transactions = localStorage.getItem('transactions') !== null ? localStorageTransactions : [];
 
-<script src="script.js"></script>
+        // --- Funções Principais ---
+
+        function addTransaction(e) {
+            e.preventDefault();
+
+            if (text.value.trim() === '' || amount.value.trim() === '') {
+                alert('Preencha descrição e valor.');
+                return;
+            }
+
+            let amountValue = +amount.value;
+            if(typeSelector.value === 'exp') amountValue = Math.abs(amountValue) * -1;
+            else amountValue = Math.abs(amountValue);
+
+            const transaction = {
+                id: generateID(),
+                text: text.value,
+                amount: amountValue
+            };
+
+            transactions.push(transaction);
+            addTransactionDOM(transaction);
+            updateValues();
+            updateLocalStorage();
+
+            text.value = '';
+            amount.value = '';
+        }
+
+        function generateID() {
+            return Math.floor(Math.random() * 100000000);
+        }
+
+        function addTransactionDOM(transaction) {
+            const sign = transaction.amount < 0 ? '-' : '+';
+            const item = document.createElement('li');
+
+            item.classList.add(transaction.amount < 0 ? 'minus' : 'plus');
+            item.innerHTML = `
+                ${transaction.text} 
+                <span>${sign}R$ ${Math.abs(transaction.amount).toFixed(2)}</span>
+                <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>
+            `;
+            list.appendChild(item);
+        }
+
+        function updateValues() {
+            const amounts = transactions.map(transaction => transaction.amount);
+            const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
+            const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
+            const expense = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
+
+            balance.innerText = `R$ ${total}`;
+            money_plus.innerText = `+R$ ${income}`;
+            money_minus.innerText = `-R$ ${expense}`;
+
+            updateChart(income, expense);
+        }
+
+        function removeTransaction(id) {
+            transactions = transactions.filter(transaction => transaction.id !== id);
+            updateLocalStorage();
+            init();
+        }
+
+        function updateLocalStorage() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        // --- Gráfico Chart.js ---
+        function updateChart(income, expense) {
+            if (myChart) myChart.destroy();
+
+            // Se tudo for zero, mostra gráfico vazio cinza
+            let dataValues = [expense, income];
+            let bgColors = ['#e74c3c', '#2ecc71'];
+            
+            if (income == 0 && expense == 0) {
+                // Opcional: mostrar círculo cinza se zerado
+                dataValues = [1]; 
+                bgColors = ['#e0e0e0'];
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: income == 0 && expense == 0 ? ['Sem dados'] : ['Despesas', 'Receitas'],
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: bgColors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // --- Funções de BACKUP (Importar/Exportar) ---
+
+        // 1. Exportar para arquivo JSON
+        function exportData() {
+            if (transactions.length === 0) {
+                alert("Não há dados para exportar!");
+                return;
+            }
+            const dataStr = JSON.stringify(transactions, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `financas_backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // 2. Importar de arquivo JSON
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data)) {
+                        // Mesclar ou substituir? Aqui optamos por substituir para restaurar backup exato
+                        if(confirm("Isso irá substituir seus dados atuais pelos do arquivo. Deseja continuar?")) {
+                            transactions = data;
+                            updateLocalStorage();
+                            init();
+                            alert("Dados restaurados com sucesso!");
+                        }
+                    } else {
+                        alert("Arquivo inválido.");
+                    }
+                } catch (error) {
+                    alert("Erro ao ler o arquivo. Verifique se é um backup válido.");
+                }
+            };
+            reader.readAsText(file);
+            // Limpar input para permitir re-upload do mesmo arquivo se necessário
+            input.value = '';
+        }
+
+        // --- Inicialização ---
+        function init() {
+            list.innerHTML = '';
+            transactions.forEach(addTransactionDOM);
+            updateValues();
+        }
+
+        init();
+        form.addEventListener('submit', addTransaction);
+    </script>
 </body>
 </html>
