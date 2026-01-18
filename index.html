@@ -2,29 +2,85 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Controle de Gastos</title>
+    <title>Controle Financeiro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Estilo -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-    <div class="container">
-        <h1>💰 Controle de Gastos</h1>
+<header>
+    <h1>💰 Controle Financeiro Pessoal</h1>
+    <p>Gerencie suas entradas e saídas de forma simples</p>
+</header>
+
+<main class="container">
+
+    <!-- FORMULÁRIO -->
+    <section class="card">
+        <h2>Adicionar movimentação</h2>
 
         <form id="form-gasto">
-            <input type="text" id="descricao" placeholder="Descrição" required>
-            <input type="number" id="valor" placeholder="Valor (R$)" required>
-            <select id="tipo">
-                <option value="entrada">Entrada</option>
-                <option value="saida">Saída</option>
-            </select>
+            <div class="form-group">
+                <label for="descricao">Descrição</label>
+                <input type="text" id="descricao" required>
+            </div>
+
+            <div class="form-group">
+                <label for="valor">Valor (R$)</label>
+                <input type="number" id="valor" step="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select id="tipo">
+                    <option value="entrada">Entrada</option>
+                    <option value="saida">Saída</option>
+                </select>
+            </div>
+
             <button type="submit">Adicionar</button>
         </form>
+    </section>
 
-        <h2>Saldo: R$ <span id="saldo">0.00</span></h2>
+    <!-- RESUMO -->
+    <section class="card resumo">
+        <div>
+            <h3>Saldo</h3>
+            <p id="saldo">R$ 0,00</p>
+        </div>
+        <div>
+            <h3>Entradas</h3>
+            <p id="total-entradas">R$ 0,00</p>
+        </div>
+        <div>
+            <h3>Saídas</h3>
+            <p id="total-saidas">R$ 0,00</p>
+        </div>
+    </section>
 
+    <!-- LISTA -->
+    <section class="card">
+        <h2>Histórico</h2>
         <ul id="lista-gastos"></ul>
-    </div>
+    </section>
 
-    <script src="script.js"></script>
+    <!-- GRÁFICO -->
+    <section class="card">
+        <h2>📊 Distribuição Financeira</h2>
+        <canvas id="grafico"></canvas>
+    </section>
+
+</main>
+
+<footer>
+    <p>© 2026 - Controle Financeiro</p>
+</footer>
+
+<script src="script.js"></script>
 </body>
 </html>
