@@ -52,3 +52,5 @@ form.addEventListener("submit", e => {
 
 renderizar();
 // codigo pronto
+
+
