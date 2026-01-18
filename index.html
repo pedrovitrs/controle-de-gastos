@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Controle de Gastos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>💰 Controle de Gastos</h1>
+
+        <form id="form-gasto">
+            <input type="text" id="descricao" placeholder="Descrição" required>
+            <input type="number" id="valor" placeholder="Valor (R$)" required>
+            <select id="tipo">
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+            </select>
+            <button type="submit">Adicionar</button>
+        </form>
+
+        <h2>Saldo: R$ <span id="saldo">0.00</span></h2>
+
+        <ul id="lista-gastos"></ul>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
