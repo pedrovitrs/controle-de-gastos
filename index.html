@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle Financeiro</title>
+    <title>Controle Financeiro - Multi-usuário</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
@@ -33,15 +33,53 @@
             padding: 20px;
         }
 
-        h2 { margin-bottom: 10px; }
-        
-        .container {
+        /* Tela de Login */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
             width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
         }
 
-        /* Paineis de Saldo */
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        /* App Principal (escondido antes do login) */
+        #main-app {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .btn-logout {
+            background: #94a3b8;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            width: auto;
+        }
+
+        /* Estilos Originais Mantidos e Otimizados */
+        .container { width: 100%; }
+
         .inc-exp-container {
             background-color: var(--card-bg);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -60,7 +98,6 @@
         .money.plus { color: var(--success); }
         .money.minus { color: var(--danger); }
 
-        /* Grid Layout */
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -71,7 +108,6 @@
             .main-grid { grid-template-columns: 1fr; }
         }
 
-        /* Cartões e Inputs */
         .card {
             background: var(--card-bg);
             padding: 20px;
@@ -100,24 +136,14 @@
 
         button:hover { background-color: #2563eb; }
         
-        /* Área de Backup */
-        .backup-area {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        
+        .backup-area { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
         .btn-export { background-color: #2c3e50; flex: 1; }
         .btn-import { background-color: #e67e22; flex: 1; }
 
-        /* Lista */
         .list { list-style-type: none; }
-
         .list li {
             background-color: var(--card-bg);
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            color: var(--text);
             display: flex;
             justify-content: space-between;
             padding: 10px;
@@ -136,7 +162,6 @@
             border: 0;
             padding: 2px 8px;
             font-size: 12px;
-            line-height: 20px;
             opacity: 0;
             transition: opacity 0.3s ease;
             position: absolute;
@@ -159,9 +184,21 @@
 </head>
 <body>
 
-    <div class="container">
-        <h2 style="text-align: center;">Minhas Finanças</h2>
-        
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>Bem-vindo</h2>
+            <p style="margin-bottom: 20px; color: #666;">Digite seu nome para acessar suas finanças</p>
+            <input type="text" id="username-input" placeholder="Seu nome (Ex: João)" />
+            <button onclick="handleLogin()">Entrar</button>
+        </div>
+    </div>
+
+    <div id="main-app">
+        <div class="user-header">
+            <span>Olá, <strong id="display-username">Usuário</strong>!</span>
+            <button class="btn-logout" onclick="handleLogout()">Sair</button>
+        </div>
+
         <div style="text-align: center; margin-bottom: 20px;">
             <p style="text-transform: uppercase; color: #777; font-size: 0.9rem;">Saldo Atual</p>
             <h1 id="balance">R$ 0,00</h1>
@@ -192,7 +229,7 @@
                     <label>Descrição</label>
                     <input type="text" id="text" placeholder="Ex: Salário" required />
 
-                    <label>Valor (Use ponto para centavos)</label>
+                    <label>Valor</label>
                     <input type="number" id="amount" placeholder="Ex: 150.50" required step="0.01" />
 
                     <label>Tipo</label>
@@ -220,36 +257,76 @@
     </div>
 
     <script>
-        // --- CORREÇÃO AQUI: IDs corrigidos para usar hífen (-) ao invés de underline (_) ---
+        // Seletores
         const balance = document.getElementById('balance');
-        const money_plus = document.getElementById('money-plus');   // Corrigido
-        const money_minus = document.getElementById('money-minus'); // Corrigido
+        const money_plus = document.getElementById('money-plus');
+        const money_minus = document.getElementById('money-minus');
         const list = document.getElementById('list');
         const form = document.getElementById('form');
         const text = document.getElementById('text');
         const amount = document.getElementById('amount');
         const typeSelector = document.getElementById('type');
         const ctx = document.getElementById('financeChart').getContext('2d');
+        
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const usernameInput = document.getElementById('username-input');
+        const displayUsername = document.getElementById('display-username');
 
         let myChart;
+        let transactions = [];
+        let currentUser = "";
 
-        // --- Estado Inicial ---
-        const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
-        let transactions = localStorage.getItem('transactions') !== null ? localStorageTransactions : [];
+        // --- Lógica de Login ---
 
-        // --- Funções Principais ---
+        function handleLogin() {
+            const user = usernameInput.value.trim().toLowerCase();
+            if (user === "") {
+                alert("Por favor, digite um nome.");
+                return;
+            }
+            currentUser = user;
+            localStorage.setItem('lastFinanceUser', currentUser);
+            
+            showApp();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('lastFinanceUser');
+            currentUser = "";
+            location.reload(); // Recarrega para limpar o estado
+        }
+
+        function showApp() {
+            loginScreen.style.display = 'none';
+            mainApp.style.display = 'block';
+            displayUsername.innerText = currentUser.charAt(0).toUpperCase() + currentUser.slice(1);
+            
+            loadUserData();
+            init();
+        }
+
+        // --- Lógica de Dados ---
+
+        function loadUserData() {
+            const storageKey = `transactions_${currentUser}`;
+            const saved = localStorage.getItem(storageKey);
+            transactions = saved !== null ? JSON.parse(saved) : [];
+        }
+
+        function updateLocalStorage() {
+            const storageKey = `transactions_${currentUser}`;
+            localStorage.setItem(storageKey, JSON.stringify(transactions));
+        }
+
+        // --- Funções de Transação ---
 
         function addTransaction(e) {
             e.preventDefault();
 
-            if (text.value.trim() === '' || amount.value.trim() === '') {
-                alert('Preencha descrição e valor.');
-                return;
-            }
+            if (text.value.trim() === '' || amount.value.trim() === '') return;
 
-            let amountValue = parseFloat(amount.value); // Usa o valor direto do input number
-
-            // Se for despesa, converte para negativo
+            let amountValue = parseFloat(amount.value);
             if(typeSelector.value === 'exp') {
                 amountValue = Math.abs(amountValue) * -1;
             } else {
@@ -257,7 +334,7 @@
             }
 
             const transaction = {
-                id: generateID(),
+                id: Math.floor(Math.random() * 100000000),
                 text: text.value,
                 amount: amountValue
             };
@@ -271,14 +348,9 @@
             amount.value = '';
         }
 
-        function generateID() {
-            return Math.floor(Math.random() * 100000000);
-        }
-
         function addTransactionDOM(transaction) {
             const sign = transaction.amount < 0 ? '-' : '+';
             const item = document.createElement('li');
-
             item.classList.add(transaction.amount < 0 ? 'minus' : 'plus');
             item.innerHTML = `
                 ${transaction.text} 
@@ -289,14 +361,12 @@
         }
 
         function updateValues() {
-            const amounts = transactions.map(transaction => transaction.amount);
+            const amounts = transactions.map(t => t.amount);
             const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
             const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
             const expense = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
 
             balance.innerText = `R$ ${total}`;
-            
-            // Aqui estava o erro, agora com as variáveis corrigidas vai funcionar:
             money_plus.innerText = `+R$ ${income}`;
             money_minus.innerText = `-R$ ${expense}`;
 
@@ -304,23 +374,16 @@
         }
 
         function removeTransaction(id) {
-            transactions = transactions.filter(transaction => transaction.id !== id);
+            transactions = transactions.filter(t => t.id !== id);
             updateLocalStorage();
             init();
         }
 
-        function updateLocalStorage() {
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-        }
-
-        // --- Gráfico Chart.js ---
         function updateChart(income, expense) {
             if (myChart) myChart.destroy();
-
             let dataValues = [expense, income];
             let bgColors = ['#e74c3c', '#2ecc71'];
             
-            // Se tudo for zero, mostra um placeholder cinza
             if (income == 0 && expense == 0) {
                 dataValues = [1]; 
                 bgColors = ['#e0e0e0'];
@@ -339,63 +402,53 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom' }
-                    }
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
         }
 
-        // --- Funções de BACKUP ---
+        // --- Backup ---
         function exportData() {
-            if (transactions.length === 0) {
-                alert("Não há dados para exportar!");
-                return;
-            }
+            if (transactions.length === 0) return alert("Sem dados!");
             const dataStr = JSON.stringify(transactions, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = url;
-            a.download = `financas_backup_${new Date().toISOString().slice(0,10)}.json`;
-            document.body.appendChild(a);
+            a.download = `financas_${currentUser}_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
-            document.body.removeChild(a);
         }
 
         function importData(input) {
             const file = input.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (Array.isArray(data)) {
-                        if(confirm("Substituir dados atuais pelo backup?")) {
-                            transactions = data;
-                            updateLocalStorage();
-                            init();
-                            alert("Sucesso!");
-                        }
+                    if (Array.isArray(data) && confirm("Restaurar dados para " + currentUser + "?")) {
+                        transactions = data;
+                        updateLocalStorage();
+                        init();
                     }
-                } catch (error) {
-                    alert("Erro ao ler backup.");
-                }
+                } catch (err) { alert("Arquivo inválido."); }
             };
             reader.readAsText(file);
-            input.value = '';
         }
 
-        // --- Inicialização ---
         function init() {
             list.innerHTML = '';
             transactions.forEach(addTransactionDOM);
             updateValues();
         }
 
-        init();
+        // --- Auto-login se já houver sessão ---
+        const lastUser = localStorage.getItem('lastFinanceUser');
+        if (lastUser) {
+            currentUser = lastUser;
+            showApp();
+        }
+
         form.addEventListener('submit', addTransaction);
     </script>
 </body>
